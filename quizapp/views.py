@@ -1,42 +1,55 @@
-# from django.shortcuts import render
-# import datetime
-# from django.http import Http404, HttpResponse
-# from rest_framework import status
-# from rest_framework.response import Response
-import datetime
-
-from django.http.response import HttpResponse, JsonResponse
+from django.http.response import HttpResponse, Http404
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-# from quizapp.models import Item
-# from quizapp.serializers import ItemSerializer
-# from quizapp.services.pdf_service import create_pdf
-# import qrcode
-
-# Create your views here.
+from rest_framework import status
 from quizapp.models import Question
 from quizapp.serializers import QuestionSerializer
-import requests
-
 from quizapp.service import db_questions_add
 
 
 class QuestionGet(APIView):
-
     def get(self, request):
-        item = Question.objects.all()
-        serializer = QuestionSerializer(item, many=True)
+        """Получение списка всех запросов из базы"""
+        question = Question.objects.all()
+        serializer = QuestionSerializer(question, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        response_data = None
+        """Получение новых вопросов"""
         if Question.objects.filter().last():
             previous_question = Question.objects.filter().last()
         else:
             previous_question = None
         if 'questions_num' in request.data:
             questions_num = request.data['questions_num']
-            response_data = db_questions_add(questions_num)
-        return HttpResponse(previous_question)
+            db_questions_add(questions_num)
+        return HttpResponse(previous_question.question_text)
 
+
+class QuestionUpdateAPIView(APIView):
+    """Изменение вопроса"""
+
+    @staticmethod
+    def get_object(pk: int):
+        try:
+            return Question.objects.get(pk=pk)
+        except Question.DoesNotExist:
+            raise Http404
+
+    def get(self, request, pk):
+        question = self.get_object(pk)
+        serializer = QuestionSerializer(question)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        question = self.get_object(pk)
+        serializer = QuestionSerializer(question, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        question = self.get_object(pk)
+        question.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
