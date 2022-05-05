@@ -18,12 +18,13 @@ class QuestionGet(APIView):
         """Получение новых вопросов"""
         if Question.objects.filter().last():
             previous_question = Question.objects.filter().last()
+            previous_question = previous_question.question_text
         else:
             previous_question = None
         if 'questions_num' in request.data:
             questions_num = request.data['questions_num']
             db_questions_add(questions_num)
-        return HttpResponse(previous_question.question_text)
+        return HttpResponse(previous_question)
 
 
 class QuestionUpdateAPIView(APIView):
